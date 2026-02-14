@@ -1,114 +1,111 @@
-// Seleciona o botão de toggle e a sidebar
-const toggleBtn = document.getElementById('toggleBtn');
-const sidebar = document.querySelector('.sidebar');
-const skillCardContainer = document.getElementById('skillCardContainer');
+let synth;
+let currentType = 'piano';
 
-// Dados das habilidades
-const skillsData = {
-    JavaScript: {
-        image: 'https://i.ibb.co/SfMRkKM/java.png',
-        description: 'JavaScript é uma linguagem de programação versátil usada para o desenvolvimento web.',
-    },
-    'SQL Server': {
-        image: 'https://i.ibb.co/4JNQH6v/sql.png',
-        description: 'SQL Server é um sistema de gerenciamento de banco de dados relacional.',
-    },
-    CSS: {
-        image: 'https://i.ibb.co/4mLJmN9/css.png',
-        description: 'CSS é utilizado para estilizar e organizar o layout de páginas web.',
-    },
-    HTML: {
-        image: 'https://i.ibb.co/LYdvy1K/html.png',
-        description: 'HTML é a linguagem de marcação base para criar estruturas de páginas web.',
-    },
-    Python: {
-        image: 'https://i.ibb.co/NmBNm7s/python.png',
-        description: 'Python é uma linguagem de programação poderosa e fácil de aprender, usada em diversas áreas.',
-    },
-    'Power BI': {
-        image: 'https://i.ibb.co/8x7dC2X/powerbi.png',
-        description: 'Power BI é uma ferramenta de visualização de dados que ajuda a criar relatórios dinâmicos.',
-    }
-};
-
-// Adiciona funcionalidade de recolhimento/expansão ao botão de toggle
-toggleBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-});
-
-// Evento de clique nas habilidades
-document.querySelectorAll('.skill').forEach(skill => {
-    skill.addEventListener('click', () => {
-        const skillName = skill.getAttribute('data-skill');
-        const skillData = skillsData[skillName];
-
-        // Atualiza o conteúdo do card da habilidade
-        skillCardContainer.innerHTML = `
-            <div class="skill-card active">
-                <img src="${skillData.image}" alt="${skillName}" class="skill-card-image">
-                <h3>${skillName}</h3>
-                <p>${skillData.description}</p>
-            </div>
-        `;
-    });
-});
-
-// Carrossel da seção "Sobre Mim"
-const carrosselItems = document.querySelectorAll('.carrossel-item');
-const btnAnterior = document.querySelector('.btn-anterior');
-const btnProximo = document.querySelector('.btn-proximo');
-let currentItem = 0;
-
-// Função para mostrar o item do carrossel com base no índice atual
-function showCarrosselItem(index) {
-    carrosselItems.forEach((item, i) => {
-        item.classList.remove('active');
-        if (i === index) {
-            item.classList.add('active');
-        }
-    });
-}
-
-// Eventos de clique nos botões de navegação do carrossel
-btnAnterior.addEventListener('click', () => {
-    currentItem = (currentItem === 0) ? carrosselItems.length - 1 : currentItem - 1;
-    showCarrosselItem(currentItem);
-});
-
-btnProximo.addEventListener('click', () => {
-    currentItem = (currentItem === carrosselItems.length - 1) ? 0 : currentItem + 1;
-    showCarrosselItem(currentItem);
-});
-
-// Função para adicionar ou remover a classe 'visible' conforme o elemento entra e sai da visualização
-function observeSections() {
-    const options = {
-        threshold: 0.1 // Quando 10% da seção estiver visível
+// Inicializar o sintetizador
+function initSynth() {
+    const volume = (document.getElementById('volume').value - 50) / 50;
+    
+    const synthTypes = {
+        piano: new Tone.Sampler({
+            urls: {
+                A4: "A4.mp3",
+                C4: "C4.mp3",
+                "D#4": "Ds4.mp3",
+                "F#4": "Fs4.mp3",
+            },
+            release: 1,
+            baseUrl: "https://tonejs.github.io/audio/salamander/",
+            volume: volume * 10
+        }).toDestination(),
+        
+        synth: new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "triangle" },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+            volume: volume * 10
+        }).toDestination(),
+        
+        organ: new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.001, decay: 0.1, sustain: 0.9, release: 0.3 },
+            volume: volume * 10
+        }).toDestination(),
+        
+        bass: new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sawtooth" },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 },
+            volume: volume * 10 - 5
+        }).toDestination()
     };
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-            } else {
-                entry.target.classList.remove('visible'); // Remove a classe para que o efeito aconteça novamente
-            }
-        });
-    }, options);
-
-    // Seleciona todas as seções e elementos internos que terão o efeito de surgimento
-    document.querySelectorAll('.fade-in').forEach(section => {
-        observer.observe(section);
-    });
+    if (synth) {
+        synth.dispose();
+    }
+    
+    synth = synthTypes[currentType];
 }
 
-// Executa a função ao carregar o conteúdo
-document.addEventListener('DOMContentLoaded', observeSections);
+// Inicializar
+initSynth();
 
-// Esconde o loader após 4 segundos quando o conteúdo estiver carregado
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        const loadingScreen = document.getElementById('loading');
-        loadingScreen.classList.add('hidden');
-    }, 4000); // Atraso de 4 segundos
+// Tocar nota
+function playNote(note) {
+    if (Tone.context.state !== 'running') {
+        Tone.start();
+    }
+    synth.triggerAttackRelease(note, "8n");
+}
+
+// Event listeners para cliques
+document.querySelectorAll('.key').forEach(key => {
+    key.addEventListener('mousedown', () => {
+        const note = key.dataset.note;
+        playNote(note);
+        key.classList.add('active');
+    });
+
+    key.addEventListener('mouseup', () => {
+        key.classList.remove('active');
+    });
+
+    key.addEventListener('mouseleave', () => {
+        key.classList.remove('active');
+    });
+});
+
+// Event listeners para teclado
+const keyMap = {};
+document.querySelectorAll('.key').forEach(key => {
+    keyMap[key.dataset.key.toLowerCase()] = key;
+});
+
+document.addEventListener('keydown', (e) => {
+    const key = keyMap[e.key.toLowerCase()];
+    if (key && !key.classList.contains('active')) {
+        const note = key.dataset.note;
+        playNote(note);
+        key.classList.add('active');
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    const key = keyMap[e.key.toLowerCase()];
+    if (key) {
+        key.classList.remove('active');
+    }
+});
+
+// Mudar tipo de som
+document.getElementById('soundType').addEventListener('change', (e) => {
+    currentType = e.target.value;
+    initSynth();
+});
+
+// Ajustar volume
+document.getElementById('volume').addEventListener('input', (e) => {
+    const volumeValue = e.target.value;
+    document.getElementById('volumeDisplay').textContent = volumeValue + '%';
+    const dbValue = (volumeValue - 50) / 50 * 10;
+    if (synth) {
+        synth.volume.value = dbValue;
+    }
 });
