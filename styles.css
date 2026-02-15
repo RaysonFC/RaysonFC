@@ -1,3 +1,6 @@
+/* ===================================
+   RESET E BASE
+   =================================== */
 * {
     margin: 0;
     padding: 0;
@@ -24,6 +27,9 @@ body {
     width: 100%;
 }
 
+/* ===================================
+   TIPOGRAFIA
+   =================================== */
 h1 {
     text-align: center;
     color: #333;
@@ -38,7 +44,9 @@ h3 {
     font-size: 1.3em;
 }
 
-/* Controles */
+/* ===================================
+   CONTROLES PRINCIPAIS
+   =================================== */
 .controls {
     display: flex;
     justify-content: center;
@@ -68,7 +76,7 @@ h3 {
     padding: 8px 12px;
     background: #f0f0f0;
     border-radius: 8px;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
 }
 
 .checkbox-label:hover {
@@ -81,7 +89,8 @@ h3 {
     cursor: pointer;
 }
 
-select, input[type="range"] {
+select,
+input[type="range"] {
     padding: 8px 12px;
     border: 2px solid #667eea;
     border-radius: 8px;
@@ -90,12 +99,23 @@ select, input[type="range"] {
     background: white;
 }
 
-select:focus, input[type="range"]:focus {
+select:focus,
+input[type="range"]:focus {
     outline: none;
     border-color: #764ba2;
 }
 
-/* Campo Harmônico */
+.volume-display {
+    display: inline-block;
+    min-width: 35px;
+    text-align: center;
+    font-weight: 600;
+    color: #667eea;
+}
+
+/* ===================================
+   CAMPO HARMÔNICO
+   =================================== */
 .harmonic-field {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     padding: 20px;
@@ -130,7 +150,8 @@ select:focus, input[type="range"]:focus {
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .harmonic-chord:hover {
@@ -157,7 +178,9 @@ select:focus, input[type="range"]:focus {
     color: #666;
 }
 
-/* Acordes */
+/* ===================================
+   SEÇÃO DE ACORDES
+   =================================== */
 .chords-section {
     background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
     padding: 20px;
@@ -180,7 +203,7 @@ select:focus, input[type="range"]:focus {
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     color: #555;
 }
 
@@ -206,7 +229,7 @@ select:focus, input[type="range"]:focus {
     padding: 15px;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
@@ -241,7 +264,9 @@ select:focus, input[type="range"]:focus {
     font-style: italic;
 }
 
-/* Piano */
+/* ===================================
+   PIANO
+   =================================== */
 .piano-wrapper {
     overflow-x: auto;
     margin: 20px 0;
@@ -264,9 +289,10 @@ select:focus, input[type="range"]:focus {
     position: relative;
     cursor: pointer;
     user-select: none;
-    transition: all 0.05s;
+    transition: all 0.05s ease;
 }
 
+/* Teclas Brancas */
 .white-key {
     width: 70px;
     height: 300px;
@@ -289,7 +315,8 @@ select:focus, input[type="range"]:focus {
     color: #aaa;
 }
 
-.white-key:active, .white-key.active {
+.white-key:active,
+.white-key.active {
     background: linear-gradient(to bottom, #e0e0e0 0%, #d0d0d0 100%);
     transform: translateY(2px);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
@@ -299,6 +326,7 @@ select:focus, input[type="range"]:focus {
     background: linear-gradient(to bottom, #fff3cd 0%, #ffe69c 100%);
 }
 
+/* Teclas Pretas */
 .black-key {
     width: 42px;
     height: 190px;
@@ -317,7 +345,8 @@ select:focus, input[type="range"]:focus {
     font-weight: 600;
 }
 
-.black-key:active, .black-key.active {
+.black-key:active,
+.black-key.active {
     background: linear-gradient(to bottom, #1a1a1a 0%, #0a0a0a 100%);
     transform: translateY(2px);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
@@ -327,26 +356,30 @@ select:focus, input[type="range"]:focus {
     background: linear-gradient(to bottom, #4a4a2a 0%, #2a2a00 100%);
 }
 
-/* Posicionamento das teclas pretas */
-.white-key:nth-child(2) + .black-key { left: 49px; }
-.white-key:nth-child(4) + .black-key { left: 121px; }
-.white-key:nth-child(7) + .black-key { left: 265px; }
-.white-key:nth-child(9) + .black-key { left: 337px; }
-.white-key:nth-child(11) + .black-key { left: 409px; }
+/* Posicionamento das teclas pretas - Oitava 3 */
+.piano .key:nth-child(2) { left: 49px; }
+.piano .key:nth-child(4) { left: 121px; }
+.piano .key:nth-child(7) { left: 265px; }
+.piano .key:nth-child(9) { left: 337px; }
+.piano .key:nth-child(11) { left: 409px; }
 
-.white-key:nth-child(14) + .black-key { left: 553px; }
-.white-key:nth-child(16) + .black-key { left: 625px; }
-.white-key:nth-child(19) + .black-key { left: 769px; }
-.white-key:nth-child(21) + .black-key { left: 841px; }
-.white-key:nth-child(23) + .black-key { left: 913px; }
+/* Posicionamento das teclas pretas - Oitava 4 */
+.piano .key:nth-child(14) { left: 553px; }
+.piano .key:nth-child(16) { left: 625px; }
+.piano .key:nth-child(19) { left: 769px; }
+.piano .key:nth-child(21) { left: 841px; }
+.piano .key:nth-child(23) { left: 913px; }
 
-.white-key:nth-child(26) + .black-key { left: 1057px; }
-.white-key:nth-child(28) + .black-key { left: 1129px; }
-.white-key:nth-child(31) + .black-key { left: 1273px; }
-.white-key:nth-child(33) + .black-key { left: 1345px; }
-.white-key:nth-child(35) + .black-key { left: 1417px; }
+/* Posicionamento das teclas pretas - Oitava 5 */
+.piano .key:nth-child(26) { left: 1057px; }
+.piano .key:nth-child(28) { left: 1129px; }
+.piano .key:nth-child(31) { left: 1273px; }
+.piano .key:nth-child(33) { left: 1345px; }
+.piano .key:nth-child(35) { left: 1417px; }
 
-/* Instruções */
+/* ===================================
+   INSTRUÇÕES
+   =================================== */
 .instructions {
     text-align: center;
     margin-top: 20px;
@@ -358,15 +391,9 @@ select:focus, input[type="range"]:focus {
     border-radius: 10px;
 }
 
-.volume-display {
-    display: inline-block;
-    min-width: 35px;
-    text-align: center;
-    font-weight: 600;
-    color: #667eea;
-}
-
-/* Responsivo */
+/* ===================================
+   MEDIA QUERIES - RESPONSIVO
+   =================================== */
 @media (max-width: 1200px) {
     .container {
         padding: 20px;
@@ -400,5 +427,9 @@ select:focus, input[type="range"]:focus {
 
     .chords-display {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .harmonic-display {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 }
