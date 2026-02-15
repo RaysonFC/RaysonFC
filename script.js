@@ -4,6 +4,31 @@ let sustainEnabled = false;
 let sustainedNotes = new Set();
 let activeNotes = new Map();
 
+// Posicionar teclas pretas dinamicamente
+window.addEventListener('DOMContentLoaded', () => {
+    const piano = document.querySelector('.piano');
+    const whiteKeys = piano.querySelectorAll('.white-key');
+    const blackKeys = piano.querySelectorAll('.black-key');
+    
+    let blackKeyIndex = 0;
+    const whiteKeyWidth = 70;
+    const blackKeyWidth = 42;
+    
+    // Padrão de teclas pretas: depois da 1ª, 2ª, 4ª, 5ª e 6ª tecla branca em cada oitava
+    const blackKeyPattern = [1, 2, 4, 5, 6]; // Posições relativas na oitava
+    
+    whiteKeys.forEach((whiteKey, index) => {
+        const positionInOctave = index % 7;
+        
+        if (blackKeyPattern.includes(positionInOctave) && blackKeyIndex < blackKeys.length) {
+            const blackKey = blackKeys[blackKeyIndex];
+            const leftPosition = (index * whiteKeyWidth) + whiteKeyWidth - (blackKeyWidth / 2);
+            blackKey.style.left = leftPosition + 'px';
+            blackKeyIndex++;
+        }
+    });
+});
+
 // Database de acordes
 const chordsDatabase = {
     basic: [
