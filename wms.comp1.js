@@ -23,7 +23,7 @@ function buildComp1Data() {
     if (map[r.cd_material][key] === null)  map[r.cd_material][key]  = 0;
     if (map[r.cd_material][ekey] === null) map[r.cd_material][ekey] = 0;
     map[r.cd_material][key] += r.saldo;
-    if (TRANSFER_ARMAZ.has(r.cd_centro_armaz)) {
+    if (isArmazEligible(r.cd_centro_armaz)) {
       map[r.cd_material][ekey] += r.saldo;
     }
   });

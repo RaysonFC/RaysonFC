@@ -8,11 +8,36 @@ const CRITICAL   = 200;
 const WARN_MULT  = 1.5; // saldo < 200 * 1.5 = 300 → alerta amarelo
 
 /**
- * Armazéns locais elegíveis para transferência.
- * Somente registros com cd_centro_armaz neste conjunto
- * podem ser origem OU destino de uma transferência.
+ * Armazéns BLOQUEADOS para transferência.
+ * Registros com cd_centro_armaz neste conjunto NÃO podem ser
+ * origem nem destino de nenhuma transferência.
+ *
+ * Armazéns ELEGÍVEIS (podem transferir): 1, 21, 28
+ * Todos os demais são bloqueados.
+ *
+ * A normalização remove zeros à esquerda e converte para maiúsculo,
+ * para aceitar tanto "0002" quanto "2", "INVE" ou "inve" etc.
  */
-const TRANSFER_ARMAZ = new Set(['1', '21', '28']);
+const BLOCKED_ARMAZ_RAW = new Set([
+  '2','23','25','26','27','29','32','300','9999','INVE','PERD',
+]);
+
+/** Normaliza cd_centro_armaz: remove zeros à esquerda (se numérico) e uppercase. */
+function normalizeArmaz(v) {
+  const s = String(v ?? '').trim().toUpperCase();
+  if (/^\d+$/.test(s)) return String(parseInt(s, 10));
+  return s;
+}
+
+/** Retorna true se o armazém está BLOQUEADO para transferência. */
+function isArmazBlocked(v) {
+  return BLOCKED_ARMAZ_RAW.has(normalizeArmaz(v));
+}
+
+/** Retorna true se o armazém é ELEGÍVEL para transferência. */
+function isArmazEligible(v) {
+  return !isArmazBlocked(v);
+}
 
 /* Lista de materiais sem saldo nos armazéns elegíveis */
 let ZERO_STOCK_DATA = [];
