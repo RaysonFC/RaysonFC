@@ -1,7 +1,7 @@
 /* ============================================================
    WMS ANALÍTICO — wms.comp2.js
-   Aba "CD 1 × 6 — ARM 28" — comparação filtrada por armazém 28
-   ARM 28 é elegível livremente como origem e destino.
+   Aba "CD 1 × 6 — ARM 28" — comparação filtrada por ARM 28 apenas.
+   Somente registros com cd_centro_armaz = 28 entram no cálculo.
    ============================================================ */
 
 let comp2All = [];
@@ -9,14 +9,21 @@ let comp2All = [];
 /* ---- Constrói dados agrupados por material (ARM 28 apenas) ---- */
 function buildComp2Data() {
   const map = {};
-  WMS_DATA.filter(r => ['1', '6'].includes(r.cd) && normalizeArmaz(r.cd_centro_armaz) === '28').forEach(r => {
-    if (!map[r.cd_material]) {
-      map[r.cd_material] = { cd_material: r.cd_material, desc_material: r.desc_material, v_cd1: null, v_cd6: null };
-    }
-    const key = 'v_cd' + r.cd;
-    if (map[r.cd_material][key] === null) map[r.cd_material][key] = 0;
-    map[r.cd_material][key] += r.saldo;
-  });
+  WMS_DATA
+    .filter(r => ['1','6'].includes(r.cd) && normalizeArmaz(r.cd_centro_armaz) === '28')
+    .forEach(r => {
+      if (!map[r.cd_material]) {
+        map[r.cd_material] = {
+          cd_material:   r.cd_material,
+          desc_material: r.desc_material,
+          v_cd1: null, v_cd6: null,
+        };
+      }
+      const key = 'v_cd' + r.cd;
+      if (map[r.cd_material][key] === null) map[r.cd_material][key] = 0;
+      map[r.cd_material][key] += r.saldo;
+    });
+
   return Object.values(map).map(r => ({
     ...r,
     total: (r.v_cd1 ?? 0) + (r.v_cd6 ?? 0),
@@ -37,9 +44,8 @@ function getComp2Filtered(all) {
   });
 }
 
-/* ---- Dica de transferência inline para a linha ---- */
+/* ---- Dica de transferência inline ---- */
 function buildComp2TransferHint(r) {
-  // ARM 28 é elegível → usa v_cd1 e v_cd6 diretamente
   const cds      = [['1', r.v_cd1], ['6', r.v_cd6]];
   const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
   const donors   = cds.filter(([, v]) => v !== null && (v - CRITICAL) > 0);
@@ -52,12 +58,10 @@ function buildComp2TransferHint(r) {
   const qty = Math.ceil(Math.min(CRITICAL - toV, avail));
   if (qty <= 0) return '<span class="transfer-none">—</span>';
 
-  const fromCls = cdClass(fromCd);
-  const toCls   = cdClass(toCd);
   return `<div class="flow-arrow">
-    <span class="cd-badge ${fromCls}">CD${fromCd}</span>
+    <span class="cd-badge ${cdClass(fromCd)}">CD${fromCd}</span>
     <span class="flow-icon">→</span>
-    <span class="cd-badge ${toCls}">CD${toCd}</span>
+    <span class="cd-badge ${cdClass(toCd)}">CD${toCd}</span>
     <span class="transfer-badge">⇄ ${qty.toLocaleString('pt-BR')}</span>
   </div>`;
 }

@@ -1,36 +1,29 @@
 /* ============================================================
    WMS ANALÍTICO — wms.comp1.js
-   Aba "CD 1 × 3 × 7" — comparação de saldos entre CDs
+   Aba "CD 1 × 3 × 7" — comparação de saldos ARM 1 apenas
+   Somente registros com cd_centro_armaz = 1 entram no cálculo.
    ============================================================ */
 
 let comp1All = [];
 
-/* ---- Constrói dados agrupados por material ---- */
+/* ---- Constrói dados agrupados por material (ARM 1 apenas) ---- */
 function buildComp1Data() {
   const map = {};
-  WMS_DATA.filter(r => ['1', '3', '7'].includes(r.cd)).forEach(r => {
-    if (!map[r.cd_material]) {
-      map[r.cd_material] = {
-        cd_material:   r.cd_material,
-        desc_material: r.desc_material,
-        v_cd1: null, v_cd3: null, v_cd7: null,
-        // saldo elegível como ORIGEM (ARM 1, 28 livres; ARM 8 apenas para CD 1)
-        e_cd1: null, e_cd3: null, e_cd7: null,
-      };
-    }
-    const key  = 'v_cd' + r.cd;
-    const ekey = 'e_cd' + r.cd;
-    if (map[r.cd_material][key]  === null) map[r.cd_material][key]  = 0;
-    if (map[r.cd_material][ekey] === null) map[r.cd_material][ekey] = 0;
-    map[r.cd_material][key] += r.saldo;
-    // Saldo elegível como origem: ARM 1 e ARM 28 livres; ARM 8 só para destino CD 1
-    const arm = normalizeArmaz(r.cd_centro_armaz);
-    if (arm === '1' || arm === '28') {
-      map[r.cd_material][ekey] += r.saldo;
-    } else if (arm === '8' && r.cd === '1') {
-      map[r.cd_material][ekey] += r.saldo;
-    }
-  });
+  WMS_DATA
+    .filter(r => ['1','3','7'].includes(r.cd) && normalizeArmaz(r.cd_centro_armaz) === '1')
+    .forEach(r => {
+      if (!map[r.cd_material]) {
+        map[r.cd_material] = {
+          cd_material:   r.cd_material,
+          desc_material: r.desc_material,
+          v_cd1: null, v_cd3: null, v_cd7: null,
+        };
+      }
+      const key = 'v_cd' + r.cd;
+      if (map[r.cd_material][key] === null) map[r.cd_material][key] = 0;
+      map[r.cd_material][key] += r.saldo;
+    });
+
   return Object.values(map).map(r => ({
     ...r,
     total: (r.v_cd1 ?? 0) + (r.v_cd3 ?? 0) + (r.v_cd7 ?? 0),
@@ -51,10 +44,9 @@ function getComp1Filtered(all) {
   });
 }
 
-/* ---- Dica de transferência inline para a linha ---- */
+/* ---- Dica de transferência inline ---- */
 function buildComp1TransferHint(r) {
-  // Usa saldo elegível como origem (e_cd*) para não sugerir de armazém bloqueado
-  const cds      = [['1', r.e_cd1], ['3', r.e_cd3], ['7', r.e_cd7]];
+  const cds      = [['1', r.v_cd1], ['3', r.v_cd3], ['7', r.v_cd7]];
   const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
   const donors   = cds.filter(([, v]) => v !== null && (v - CRITICAL) > 0);
   if (critical.length === 0 || donors.length === 0) return '<span class="transfer-none">—</span>';
@@ -66,12 +58,10 @@ function buildComp1TransferHint(r) {
   const qty = Math.ceil(Math.min(CRITICAL - toV, avail));
   if (qty <= 0) return '<span class="transfer-none">—</span>';
 
-  const fromCls = cdClass(fromCd);
-  const toCls   = cdClass(toCd);
   return `<div class="flow-arrow">
-    <span class="cd-badge ${fromCls}">CD${fromCd}</span>
+    <span class="cd-badge ${cdClass(fromCd)}">CD${fromCd}</span>
     <span class="flow-icon">→</span>
-    <span class="cd-badge ${toCls}">CD${toCd}</span>
+    <span class="cd-badge ${cdClass(toCd)}">CD${toCd}</span>
     <span class="transfer-badge">⇄ ${qty.toLocaleString('pt-BR')}</span>
   </div>`;
 }
