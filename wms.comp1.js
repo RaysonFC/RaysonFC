@@ -14,16 +14,20 @@ function buildComp1Data() {
         cd_material:   r.cd_material,
         desc_material: r.desc_material,
         v_cd1: null, v_cd3: null, v_cd7: null,
-        // saldo elegível (apenas ARM 1, 21, 28) separado para hint de transferência
+        // saldo elegível como ORIGEM (ARM 1, 28 livres; ARM 8 apenas para CD 1)
         e_cd1: null, e_cd3: null, e_cd7: null,
       };
     }
     const key  = 'v_cd' + r.cd;
     const ekey = 'e_cd' + r.cd;
-    if (map[r.cd_material][key] === null)  map[r.cd_material][key]  = 0;
+    if (map[r.cd_material][key]  === null) map[r.cd_material][key]  = 0;
     if (map[r.cd_material][ekey] === null) map[r.cd_material][ekey] = 0;
     map[r.cd_material][key] += r.saldo;
-    if (isArmazEligible(r.cd_centro_armaz)) {
+    // Saldo elegível como origem: ARM 1 e ARM 28 livres; ARM 8 só para destino CD 1
+    const arm = normalizeArmaz(r.cd_centro_armaz);
+    if (arm === '1' || arm === '28') {
+      map[r.cd_material][ekey] += r.saldo;
+    } else if (arm === '8' && r.cd === '1') {
       map[r.cd_material][ekey] += r.saldo;
     }
   });
@@ -49,10 +53,10 @@ function getComp1Filtered(all) {
 
 /* ---- Dica de transferência inline para a linha ---- */
 function buildComp1TransferHint(r) {
-  // Usa saldo elegível (apenas ARM 1, 21, 28) para decidir quem pode transferir
+  // Usa saldo elegível como origem (e_cd*) para não sugerir de armazém bloqueado
   const cds      = [['1', r.e_cd1], ['3', r.e_cd3], ['7', r.e_cd7]];
   const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
-  const donors   = cds.filter(([, v]) => v !== null && v > 0 && v >= CRITICAL);
+  const donors   = cds.filter(([, v]) => v !== null && (v - CRITICAL) > 0);
   if (critical.length === 0 || donors.length === 0) return '<span class="transfer-none">—</span>';
 
   const [fromCd, fromV] = donors.sort((a, b) => b[1] - a[1])[0];

@@ -1,112 +1,115 @@
 /* ============================================================
    WMS ANALÍTICO — wms.transfer.js
-   Algoritmo de cálculo de sugestões de transferência.
+   Algoritmo de sugestões de transferência.
 
-   REGRA DE ELEGIBILIDADE:
-   - Somente registros cujo cd_centro_armaz NÃO esteja na lista
-     BLOCKED_ARMAZ_RAW podem participar de transferências.
-   - Armazéns elegíveis: 1, 21, 28.
-   - Bloqueados: 0002 0023 0025 0026 0027 0029 0032 0300 9999 INVE PERD
-     (e qualquer variante com zeros à esquerda ou capitalização diferente).
-   - O doador só empresta o EXCEDENTE acima de 200 — nunca fica abaixo do crítico.
+   REGRAS DE PAR VÁLIDO (isValidTransferPair):
+   ┌──────────────┬────────────────────────────────────────────────────┐
+   │ ARM 1 orig   │ Qualquer destino não bloqueado                     │
+   │ ARM 8 orig   │ Somente destino com cd_unidade_de_n = "1"          │
+   │ ARM 28 orig  │ SOMENTE CD 1 ARM 28 ↔ CD 6 ARM 28                 │
+   │ Outros       │ Bloqueado — nunca origem                           │
+   └──────────────┴────────────────────────────────────────────────────┘
+
+   CÁLCULO DA QUANTIDADE:
+   - need  = 200 − saldo_destino
+   - avail = saldo_origem − 200  (excedente real; doador nunca fica abaixo de 200)
+   - qty   = ceil( MIN(need, avail) )
    ============================================================ */
 
 function buildTransferSuggestions() {
 
-  /* Passo 1: Filtra somente registros elegíveis */
-  const eligible = WMS_DATA.filter(r => isArmazEligible(r.cd_centro_armaz));
-
-  /* Passo 2: Agrupa saldo elegível por (material + CD + armazém) */
-  const byKey = {};
-  eligible.forEach(r => {
+  /* ── Passo 1: Agrupa saldo por (material + cd + armaz) ── */
+  const grouped = {};
+  WMS_DATA.forEach(r => {
     const key = `${r.cd_material}|||${r.cd}|||${r.cd_centro_armaz}`;
-    if (!byKey[key]) {
-      byKey[key] = {
+    if (!grouped[key]) {
+      grouped[key] = {
         cd_material:     r.cd_material,
         desc_material:   r.desc_material,
         cd:              r.cd,
-        cd_centro_armaz: r.cd_centro_armaz,
+        armaz:           r.cd_centro_armaz,
         saldo: 0,
       };
     }
-    byKey[key].saldo += r.saldo;
+    grouped[key].saldo += r.saldo;
   });
 
-  /* Passo 3: Agrupa por material → lista de entradas {cd, armaz, saldo} */
-  const byMat = {};
-  Object.values(byKey).forEach(e => {
-    if (!byMat[e.cd_material]) {
-      byMat[e.cd_material] = { desc_material: e.desc_material, entries: [] };
-    }
-    byMat[e.cd_material].entries.push({
-      cd:    e.cd,
-      armaz: e.cd_centro_armaz,
-      saldo: e.saldo,
-    });
+  const entries = Object.values(grouped);
+
+  /* ── Passo 2: Separa destinos e origens candidatas ── */
+
+  // Destinos: não bloqueados com saldo crítico
+  const destinations = entries.filter(e =>
+    !isArmazBlocked(e.armaz) && e.saldo < CRITICAL
+  );
+
+  // Origens candidatas: ARM 1, 8 ou 28 com saldo > 0 e excedente real
+  const origins = entries.filter(e => {
+    const arm = normalizeArmaz(e.armaz);
+    if (!['1','8','28'].includes(arm)) return false;
+    if (e.saldo <= 0) return false;
+    return (e.saldo - CRITICAL) > 0; // tem excedente
   });
 
-  /* ---- Detecta itens sem saldo nos armazéns elegíveis ---- */
+  /* ── Passo 3: Detecta itens sem saldo nas origens elegíveis ── */
   ZERO_STOCK_DATA = [];
-  eligible.filter(r => r.saldo <= 0).forEach(r => {
-    const already = ZERO_STOCK_DATA.some(
-      z => z.cd_material === r.cd_material &&
-           z.cd === r.cd &&
-           z.cd_centro_armaz === r.cd_centro_armaz
-    );
-    if (!already) {
+  entries.forEach(e => {
+    const arm = normalizeArmaz(e.armaz);
+    if (['1','8','28'].includes(arm) && e.saldo <= 0) {
       ZERO_STOCK_DATA.push({
-        cd_material:     r.cd_material,
-        desc_material:   r.desc_material,
-        cd:              r.cd,
-        cd_centro_armaz: r.cd_centro_armaz,
-        saldo:           r.saldo,
+        cd_material:     e.cd_material,
+        desc_material:   e.desc_material,
+        cd:              e.cd,
+        cd_centro_armaz: e.armaz,
+        saldo:           e.saldo,
       });
     }
   });
 
+  /* ── Passo 4: Gera sugestões cruzando destinos × origens ── */
   const suggestions = [];
 
-  /* Passo 4: Gera sugestões */
-  Object.entries(byMat).forEach(([mat, data]) => {
-    // Destinos: elegíveis com saldo < CRITICAL
-    const critical = data.entries.filter(e => e.saldo < CRITICAL);
-    // Doadores: elegíveis com saldo > 0 E excedente acima do crítico
-    const donors   = data.entries.filter(e => e.saldo > 0 && (e.saldo - CRITICAL) > 0);
+  destinations.forEach(dest => {
+    // Filtra origens válidas para este destino
+    const validOrigins = origins.filter(orig =>
+      orig.cd_material === dest.cd_material &&
+      isValidTransferPair(
+        { cd: orig.cd, armaz: orig.armaz },
+        { cd: dest.cd, armaz: dest.armaz }
+      )
+    );
 
-    if (critical.length === 0 || donors.length === 0) return;
+    if (validOrigins.length === 0) return;
 
-    critical.forEach(dest => {
-      const sortedDonors = [...donors].sort((a, b) => b.saldo - a.saldo);
-      sortedDonors.forEach(orig => {
-        if (orig.cd === dest.cd && orig.armaz === dest.armaz) return;
+    // Melhor doador = maior excedente
+    validOrigins.sort((a, b) => b.saldo - a.saldo);
+    const orig = validOrigins[0];
 
-        const need  = CRITICAL - dest.saldo;
-        const avail = orig.saldo - CRITICAL; // excedente real — nunca deixa doador abaixo de 200
-        const qty   = Math.ceil(Math.min(need, avail));
-        if (qty <= 0) return;
+    const need  = CRITICAL - dest.saldo;
+    const avail = orig.saldo - CRITICAL;
+    const qty   = Math.ceil(Math.min(need, avail));
+    if (qty <= 0) return;
 
-        const pct      = dest.saldo / CRITICAL;
-        const priority = dest.saldo <= 0 || pct < 0.5 ? 'URGENTE'
-                       : pct < 0.75                   ? 'ALTO'
-                       :                                'NORMAL';
+    const pct      = dest.saldo / CRITICAL;
+    const priority = dest.saldo <= 0 || pct < 0.5 ? 'URGENTE'
+                   : pct < 0.75                    ? 'ALTO'
+                   :                                 'NORMAL';
 
-        suggestions.push({
-          cd_material:   mat,
-          desc_material: data.desc_material,
-          cd_destino:    dest.cd,
-          armaz_destino: dest.armaz,
-          saldo_destino: dest.saldo,
-          cd_origem:     orig.cd,
-          armaz_origem:  orig.armaz,
-          saldo_origem:  orig.saldo,
-          qtd_sugerida:  qty,
-          prioridade:    priority,
-        });
-      });
+    suggestions.push({
+      cd_material:   dest.cd_material,
+      desc_material: dest.desc_material,
+      cd_destino:    dest.cd,
+      armaz_destino: dest.armaz,
+      saldo_destino: dest.saldo,
+      cd_origem:     orig.cd,
+      armaz_origem:  orig.armaz,
+      saldo_origem:  orig.saldo,
+      qtd_sugerida:  qty,
+      prioridade:    priority,
     });
   });
 
-  /* Passo 5: Ordena por prioridade → menor saldo destino */
+  /* ── Passo 5: Ordena por prioridade → menor saldo destino ── */
   suggestions.sort((a, b) => {
     const po = priorityOrder(a.prioridade) - priorityOrder(b.prioridade);
     if (po !== 0) return po;
@@ -116,14 +119,11 @@ function buildTransferSuggestions() {
   return suggestions;
 }
 
-/**
- * Itens completamente sem saldo nos armazéns elegíveis
- * (sem nenhum doador possível → transferência impossível).
- */
 function buildNoStockItems() {
-  const eligible = WMS_DATA.filter(r => isArmazEligible(r.cd_centro_armaz));
   const matSaldo = {};
-  eligible.forEach(r => {
+  WMS_DATA.forEach(r => {
+    const arm = normalizeArmaz(r.cd_centro_armaz);
+    if (!['1','8','28'].includes(arm)) return;
     if (!matSaldo[r.cd_material]) matSaldo[r.cd_material] = { desc: r.desc_material, total: 0 };
     matSaldo[r.cd_material].total += r.saldo;
   });

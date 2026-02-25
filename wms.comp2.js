@@ -1,6 +1,7 @@
 /* ============================================================
    WMS ANALÍTICO — wms.comp2.js
    Aba "CD 1 × 6 — ARM 28" — comparação filtrada por armazém 28
+   ARM 28 é elegível livremente como origem e destino.
    ============================================================ */
 
 let comp2All = [];
@@ -8,8 +9,7 @@ let comp2All = [];
 /* ---- Constrói dados agrupados por material (ARM 28 apenas) ---- */
 function buildComp2Data() {
   const map = {};
-  // ARM 28 já é elegível, então o saldo aqui já serve para transferência
-  WMS_DATA.filter(r => ['1', '6'].includes(r.cd) && r.cd_centro_armaz === '28').forEach(r => {
+  WMS_DATA.filter(r => ['1', '6'].includes(r.cd) && normalizeArmaz(r.cd_centro_armaz) === '28').forEach(r => {
     if (!map[r.cd_material]) {
       map[r.cd_material] = { cd_material: r.cd_material, desc_material: r.desc_material, v_cd1: null, v_cd6: null };
     }
@@ -39,10 +39,10 @@ function getComp2Filtered(all) {
 
 /* ---- Dica de transferência inline para a linha ---- */
 function buildComp2TransferHint(r) {
-  // ARM 28 é elegível, então v_cd1/v_cd6 já refletem saldo transferível
+  // ARM 28 é elegível → usa v_cd1 e v_cd6 diretamente
   const cds      = [['1', r.v_cd1], ['6', r.v_cd6]];
   const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
-  const donors   = cds.filter(([, v]) => v !== null && v > 0 && v >= CRITICAL);
+  const donors   = cds.filter(([, v]) => v !== null && (v - CRITICAL) > 0);
   if (critical.length === 0 || donors.length === 0) return '<span class="transfer-none">—</span>';
 
   const [fromCd, fromV] = donors[0];

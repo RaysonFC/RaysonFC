@@ -8,18 +8,26 @@ const CRITICAL   = 200;
 const WARN_MULT  = 1.5; // saldo < 200 * 1.5 = 300 → alerta amarelo
 
 /**
- * Armazéns BLOQUEADOS para transferência.
- * Registros com cd_centro_armaz neste conjunto NÃO podem ser
- * origem nem destino de nenhuma transferência.
+ * ============================================================
+ * REGRAS DE TRANSFERÊNCIA POR ARMAZÉM
+ * ============================================================
  *
- * Armazéns ELEGÍVEIS (podem transferir): 1, 21, 28
- * Todos os demais são bloqueados.
+ * ARM 1  → origem livre para qualquer CD (exceto bloqueados)
+ * ARM 28 → SOMENTE entre CD 1 ARM 28 ↔ CD 6 ARM 28
+ * ARM 8  → origem APENAS para cd_unidade_de_n = "1"
  *
- * A normalização remove zeros à esquerda e converte para maiúsculo,
- * para aceitar tanto "0002" quanto "2", "INVE" ou "inve" etc.
+ * BLOQUEADOS (nem origem nem destino):
+ *   00, 2, 8, 20, 21, 22, 23, 24, 25, 26, 27, 29,
+ *   30, 32, 33, 200, 300, 1001, 9999,
+ *   ABAS, AMOS, HOLD, IMPO, INVE, LOJA, MTNL, PERD,
+ *   PROD, QUAL, TEMP, TRAN, VENC
+ * ============================================================
  */
+
 const BLOCKED_ARMAZ_RAW = new Set([
-  '2','23','25','26','27','29','32','300','9999','INVE','PERD',
+  '0','2','8','20','21','22','23','24','25','26','27','29',
+  '30','32','33','200','300','1001','9999',
+  'ABAS','AMOS','HOLD','IMPO','INVE','LOJA','MTNL','PERD','PROD','QUAL','TEMP','TRAN','VENC',
 ]);
 
 /** Normaliza cd_centro_armaz: remove zeros à esquerda (se numérico) e uppercase. */
@@ -29,14 +37,52 @@ function normalizeArmaz(v) {
   return s;
 }
 
-/** Retorna true se o armazém está BLOQUEADO para transferência. */
+/** Retorna true se o armazém está BLOQUEADO (nem origem nem destino). */
 function isArmazBlocked(v) {
   return BLOCKED_ARMAZ_RAW.has(normalizeArmaz(v));
 }
 
-/** Retorna true se o armazém é ELEGÍVEL para transferência. */
-function isArmazEligible(v) {
-  return !isArmazBlocked(v);
+/**
+ * Verifica se um par origem→destino é uma transferência VÁLIDA.
+ *
+ * Regras:
+ *  - ARM 1  (origem) → qualquer CD destino com ARM não bloqueado
+ *  - ARM 8  (origem) → somente destinos com cd = "1"
+ *  - ARM 28 (origem) → SOMENTE para o par CD1↔CD6, ambos com ARM 28
+ *  - Qualquer outro  → bloqueado
+ *
+ * @param {object} orig  - { cd, armaz } da entrada doadora
+ * @param {object} dest  - { cd, armaz } da entrada destino
+ */
+function isValidTransferPair(orig, dest) {
+  const oArm = normalizeArmaz(orig.armaz);
+  const dArm = normalizeArmaz(dest.armaz);
+
+  // Destino nunca pode ser armazém bloqueado
+  if (isArmazBlocked(dest.armaz)) return false;
+
+  // Mesmo CD + armazém → não faz sentido
+  if (orig.cd === dest.cd && oArm === dArm) return false;
+
+  if (oArm === '1') {
+    // ARM 1 origem → qualquer destino não bloqueado
+    return true;
+  }
+
+  if (oArm === '8') {
+    // ARM 8 origem → somente destino com cd = "1"
+    return String(dest.cd).trim() === '1';
+  }
+
+  if (oArm === '28') {
+    // ARM 28 origem → SOMENTE CD1 ARM28 ↔ CD6 ARM28
+    if (dArm !== '28') return false;
+    const validPairs = (orig.cd === '1' && dest.cd === '6') ||
+                       (orig.cd === '6' && dest.cd === '1');
+    return validPairs;
+  }
+
+  return false;
 }
 
 /* Lista de materiais sem saldo nos armazéns elegíveis */
