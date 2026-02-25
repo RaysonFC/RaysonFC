@@ -1,0 +1,114 @@
+/* ============================================================
+   WMS ANALÍTICO — wms.comp2.js
+   Aba "CD 1 × 6 — ARM 28" — comparação filtrada por armazém 28
+   ============================================================ */
+
+let comp2All = [];
+
+/* ---- Constrói dados agrupados por material (ARM 28 apenas) ---- */
+function buildComp2Data() {
+  const map = {};
+  WMS_DATA.filter(r => ['1', '6'].includes(r.cd) && r.cd_centro_armaz === '28').forEach(r => {
+    if (!map[r.cd_material]) {
+      map[r.cd_material] = { cd_material: r.cd_material, desc_material: r.desc_material, v_cd1: null, v_cd6: null };
+    }
+    const key = 'v_cd' + r.cd;
+    if (map[r.cd_material][key] === null) map[r.cd_material][key] = 0;
+    map[r.cd_material][key] += r.saldo;
+  });
+  return Object.values(map).map(r => ({
+    ...r,
+    total: (r.v_cd1 ?? 0) + (r.v_cd6 ?? 0),
+  }));
+}
+
+/* ---- Filtros ---- */
+function getComp2Filtered(all) {
+  const produto = document.getElementById('filter-c2-produto').value.toLowerCase().trim();
+  const saldo   = document.getElementById('filter-c2-saldo').value;
+  return all.filter(r => {
+    if (produto && !r.cd_material.toLowerCase().includes(produto)
+               && !r.desc_material.toLowerCase().includes(produto)) return false;
+    const hasCrit = [r.v_cd1, r.v_cd6].some(v => v !== null && v < CRITICAL);
+    if (saldo === 'critico' && !hasCrit) return false;
+    if (saldo === 'normal'  &&  hasCrit) return false;
+    return true;
+  });
+}
+
+/* ---- Dica de transferência inline para a linha ---- */
+function buildComp2TransferHint(r) {
+  const cds      = [['1', r.v_cd1], ['6', r.v_cd6]];
+  const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
+  const donors   = cds.filter(([, v]) => v !== null && v >= CRITICAL);
+  if (critical.length === 0 || donors.length === 0) return '<span class="transfer-none">—</span>';
+
+  const [fromCd, fromV] = donors[0];
+  const [toCd,   toV]   = critical[0];
+  const avail = fromV - CRITICAL;
+  const qty   = Math.ceil(Math.min(CRITICAL - toV, avail > 0 ? avail : fromV * 0.5));
+  if (qty <= 0) return '<span class="transfer-none">—</span>';
+
+  const fromCls = cdClass(fromCd);
+  const toCls   = cdClass(toCd);
+  return `<div class="flow-arrow">
+    <span class="cd-badge ${fromCls}">CD${fromCd}</span>
+    <span class="flow-icon">→</span>
+    <span class="cd-badge ${toCls}">CD${toCd}</span>
+    <span class="transfer-badge">⇄ ${qty.toLocaleString('pt-BR')}</span>
+  </div>`;
+}
+
+/* ---- Render ---- */
+function renderComp2() {
+  const filtered = sortData(getComp2Filtered(comp2All), state.comp2.sort.col, state.comp2.sort.dir);
+  const start    = (state.comp2.page - 1) * PAGE_SIZE;
+  const page     = filtered.slice(start, start + PAGE_SIZE);
+  const tbody    = document.getElementById('tbody-comp2');
+
+  tbody.innerHTML = filtered.length === 0
+    ? '<tr><td colspan="6" class="empty-state"><p>Nenhum resultado encontrado.</p></td></tr>'
+    : page.map(r => {
+        const hasCrit = [r.v_cd1, r.v_cd6].some(v => v !== null && v < CRITICAL);
+        return `<tr class="${hasCrit ? 'row-critical' : ''}">
+          <td><code style="font-family:var(--mono);font-size:11px;color:var(--accent)">${r.cd_material || '—'}</code></td>
+          <td title="${r.desc_material}">${r.desc_material || '—'}</td>
+          <td class="td-num">${fmtNum(r.v_cd1)}</td>
+          <td class="td-num">${fmtNum(r.v_cd6)}</td>
+          <td class="td-num" style="font-family:var(--mono);font-size:12px">${fmt(r.total, false)}</td>
+          <td>${buildComp2TransferHint(r)}</td>
+        </tr>`;
+      }).join('');
+
+  renderPagination('pagination-comp2', filtered.length, state.comp2.page,
+    p => { state.comp2.page = p; renderComp2(); }
+  );
+  updateSortHeaders('table-comp2', state.comp2.sort);
+}
+
+/* ---- Init ---- */
+function initComp2() {
+  comp2All = buildComp2Data();
+
+  ['filter-c2-produto', 'filter-c2-saldo'].forEach(id => {
+    document.getElementById(id).addEventListener('input',  () => { state.comp2.page = 1; renderComp2(); });
+    document.getElementById(id).addEventListener('change', () => { state.comp2.page = 1; renderComp2(); });
+  });
+
+  document.getElementById('clear-c2-filters').addEventListener('click', () => {
+    ['filter-c2-produto', 'filter-c2-saldo'].forEach(id => document.getElementById(id).value = '');
+    state.comp2.page = 1;
+    renderComp2();
+  });
+
+  document.querySelectorAll('#table-comp2 th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      state.comp2.sort = { col, dir: state.comp2.sort.col === col ? state.comp2.sort.dir * -1 : 1 };
+      state.comp2.page = 1;
+      renderComp2();
+    });
+  });
+
+  renderComp2();
+}
