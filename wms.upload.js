@@ -91,8 +91,8 @@ function processFile(file) {
         WMS_DATA.push({
           cd_material:     idx.cd_material     !== -1 ? String(r[idx.cd_material]     ?? '').trim() : '',
           desc_material:   idx.desc_material   !== -1 ? String(r[idx.desc_material]   ?? '').trim() : '',
-          cd:              idx.cd              !== -1 ? String(r[idx.cd]              ?? '').trim() : '',
-          cd_centro_armaz: idx.cd_centro_armaz !== -1 ? String(r[idx.cd_centro_armaz] ?? '').trim() : '',
+          cd:              idx.cd              !== -1 ? normalizeArmaz(r[idx.cd])              : '',
+          cd_centro_armaz: idx.cd_centro_armaz !== -1 ? normalizeArmaz(r[idx.cd_centro_armaz]) : '',
           saldo:           idx.saldo           !== -1 ? num(r[idx.saldo]) : 0,
           desc_armaz:      idx.desc_armaz      !== -1 ? String(r[idx.desc_armaz]      ?? '').trim() : '',
           devolver:        idx.devolver        !== -1 ? num(r[idx.devolver]) : 0,
