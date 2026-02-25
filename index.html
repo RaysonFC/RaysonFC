@@ -220,8 +220,10 @@
             <th class="sortable" data-col="desc_material">Descrição <span class="sort-icon"></span></th>
             <th class="sortable th-num" data-col="saldo_destino">Saldo Destino <span class="sort-icon"></span></th>
             <th class="sortable" data-col="cd_destino">CD Destino <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="armaz_destino">ARM Destino <span class="sort-icon"></span></th>
             <th>Fluxo</th>
             <th class="sortable" data-col="cd_origem">CD Origem <span class="sort-icon"></span></th>
+            <th class="sortable" data-col="armaz_origem">ARM Origem <span class="sort-icon"></span></th>
             <th class="sortable th-num" data-col="saldo_origem">Saldo Origem <span class="sort-icon"></span></th>
             <th class="sortable th-num" data-col="qtd_sugerida">Qtd. Sugerida <span class="sort-icon"></span></th>
             <th class="sortable" data-col="prioridade">Prioridade <span class="sort-icon"></span></th>
@@ -231,6 +233,34 @@
       </table>
     </div>
     <div class="pagination" id="pagination-transfer"></div>
+
+    <!-- SEÇÃO: ITENS SEM ESTOQUE / SEM TRANSFERÊNCIA POSSÍVEL -->
+    <div class="nostock-toggle-bar">
+      <div class="nostock-toggle-info">
+        <span class="nostock-icon">⊘</span>
+        <span>Itens <strong>sem estoque</strong> nos armazéns elegíveis (ARM 1, 21, 28) — transferência impossível</span>
+        <span class="nostock-badge" id="nostock-count">0</span>
+      </div>
+      <button class="nostock-toggle-btn" id="toggle-nostock">▼ Ver Itens Sem Estoque</button>
+    </div>
+
+    <div class="nostock-section" id="nostock-section" style="display:none">
+      <div class="table-wrapper" style="max-height:280px">
+        <table class="data-table" id="table-nostock">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Descrição</th>
+              <th>CD</th>
+              <th>Armazém</th>
+              <th class="th-num">Saldo</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-nostock"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination-nostock"></div>
+    </div>
   </div>
 
   <!-- ========= TAB: COMP 1 — CD 1 × 3 × 7 ========= -->

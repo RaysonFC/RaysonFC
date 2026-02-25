@@ -102,7 +102,8 @@ function processFile(file) {
       if (WMS_DATA.length === 0) { showError('Nenhum dado encontrado na planilha.'); return; }
 
       setProgress(95, 'Calculando transferências...');
-      TRANSFER_DATA = buildTransferSuggestions();
+      TRANSFER_DATA  = buildTransferSuggestions();
+      ZERO_STOCK_DATA = buildNoStockItems();
 
       setProgress(100, `${WMS_DATA.length.toLocaleString('pt-BR')} registros — ${TRANSFER_DATA.length} sugestões de transferência`);
       setTimeout(() => launchApp(file.name), 450);

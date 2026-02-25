@@ -10,11 +10,22 @@ function buildComp1Data() {
   const map = {};
   WMS_DATA.filter(r => ['1', '3', '7'].includes(r.cd)).forEach(r => {
     if (!map[r.cd_material]) {
-      map[r.cd_material] = { cd_material: r.cd_material, desc_material: r.desc_material, v_cd1: null, v_cd3: null, v_cd7: null };
+      map[r.cd_material] = {
+        cd_material:   r.cd_material,
+        desc_material: r.desc_material,
+        v_cd1: null, v_cd3: null, v_cd7: null,
+        // saldo elegível (apenas ARM 1, 21, 28) separado para hint de transferência
+        e_cd1: null, e_cd3: null, e_cd7: null,
+      };
     }
-    const key = 'v_cd' + r.cd;
-    if (map[r.cd_material][key] === null) map[r.cd_material][key] = 0;
+    const key  = 'v_cd' + r.cd;
+    const ekey = 'e_cd' + r.cd;
+    if (map[r.cd_material][key] === null)  map[r.cd_material][key]  = 0;
+    if (map[r.cd_material][ekey] === null) map[r.cd_material][ekey] = 0;
     map[r.cd_material][key] += r.saldo;
+    if (TRANSFER_ARMAZ.has(r.cd_centro_armaz)) {
+      map[r.cd_material][ekey] += r.saldo;
+    }
   });
   return Object.values(map).map(r => ({
     ...r,
@@ -38,15 +49,17 @@ function getComp1Filtered(all) {
 
 /* ---- Dica de transferência inline para a linha ---- */
 function buildComp1TransferHint(r) {
-  const cds      = [['1', r.v_cd1], ['3', r.v_cd3], ['7', r.v_cd7]];
+  // Usa saldo elegível (apenas ARM 1, 21, 28) para decidir quem pode transferir
+  const cds      = [['1', r.e_cd1], ['3', r.e_cd3], ['7', r.e_cd7]];
   const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
-  const donors   = cds.filter(([, v]) => v !== null && v >= CRITICAL);
+  const donors   = cds.filter(([, v]) => v !== null && v > 0 && v >= CRITICAL);
   if (critical.length === 0 || donors.length === 0) return '<span class="transfer-none">—</span>';
 
   const [fromCd, fromV] = donors.sort((a, b) => b[1] - a[1])[0];
   const [toCd,   toV]   = critical.sort((a, b) => a[1] - b[1])[0];
   const avail = fromV - CRITICAL;
-  const qty   = Math.ceil(Math.min(CRITICAL - toV, avail > 0 ? avail : fromV * 0.5));
+  if (avail <= 0) return '<span class="transfer-none">Sem excedente</span>';
+  const qty = Math.ceil(Math.min(CRITICAL - toV, avail));
   if (qty <= 0) return '<span class="transfer-none">—</span>';
 
   const fromCls = cdClass(fromCd);

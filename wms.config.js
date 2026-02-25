@@ -7,6 +7,16 @@ const PAGE_SIZE  = 50;
 const CRITICAL   = 200;
 const WARN_MULT  = 1.5; // saldo < 200 * 1.5 = 300 → alerta amarelo
 
+/**
+ * Armazéns locais elegíveis para transferência.
+ * Somente registros com cd_centro_armaz neste conjunto
+ * podem ser origem OU destino de uma transferência.
+ */
+const TRANSFER_ARMAZ = new Set(['1', '21', '28']);
+
+/* Lista de materiais sem saldo nos armazéns elegíveis */
+let ZERO_STOCK_DATA = [];
+
 /* Mapeamento de nomes de colunas aceitos no Excel (aliases) */
 const COL_MAP = {
   cd_material:     ['cd_material','cdmaterial','codigo','code','material','cod_material'],
