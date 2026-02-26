@@ -1,356 +1,153 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WMS Analítico — Gestão de Transferências</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="wms.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Severino OCR → CSV</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- ====== UPLOAD SCREEN ====== -->
-<div id="upload-screen" class="upload-screen">
-  <div class="upload-bg"></div>
-  <div class="upload-container">
-    <div class="upload-logo">
-      <span class="logo-wms">WMS</span>
-      <span class="logo-sub">Warehouse Management System</span>
-      <span class="logo-tag">▲ ANALÍTICO — TRANSFERÊNCIAS</span>
-    </div>
-    <div class="upload-card" id="drop-zone">
-      <div class="upload-icon">
-        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="8" y="8" width="48" height="48" rx="5" stroke="currentColor" stroke-width="2"/>
-          <path d="M32 20v24M22 30l10-10 10 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M20 44h24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <h2 class="upload-title">Carregar Arquivo de Estoque</h2>
-      <p class="upload-desc">Arraste e solte seu arquivo Excel aqui<br>ou clique para selecionar</p>
-      <label class="upload-btn" for="file-input">
-        <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
-        Selecionar Arquivo .xlsx
-      </label>
-      <p class="upload-hint">Suporta arquivos .xlsx e .xls</p>
-    </div>
-    <div class="upload-progress" id="upload-progress" style="display:none">
-      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-      <p class="progress-label" id="progress-label">Lendo arquivo...</p>
-    </div>
-    <div class="upload-error" id="upload-error" style="display:none"></div>
-  </div>
-</div>
-
-<!-- ====== MAIN APP ====== -->
-<div id="app" class="app" style="display:none">
+<div class="wrap">
 
   <!-- HEADER -->
   <header class="header">
-    <div class="header-left">
-      <button class="back-btn" id="back-btn" title="Carregar novo arquivo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <div class="header-brand">
-        <span class="brand-wms">WMS</span>
-        <span class="brand-sep">|</span>
-        <span class="brand-analytic">Analítico</span>
-      </div>
-      <span class="brand-file" id="brand-file">—</span>
+    <div class="logo">
+      <span class="logo-icon">⬡</span>
+      <h1>SEVERINO <em>OCR</em></h1>
     </div>
-    <div class="header-badges">
-      <div class="badge badge-total">
-        <span class="badge-num" id="badge-total">0</span>
-        <span class="badge-label">ITENS</span>
-      </div>
-      <div class="badge badge-critical">
-        <span class="badge-num" id="badge-critical">0</span>
-        <span class="badge-label">CRÍTICOS</span>
-      </div>
-      <div class="badge badge-transfer">
-        <span class="badge-num" id="badge-transfer">0</span>
-        <span class="badge-label">TRANSFERIR</span>
-      </div>
-      <div class="badge badge-cds">
-        <span class="badge-num" id="badge-cds">0</span>
-        <span class="badge-label">CDs</span>
-      </div>
-    </div>
+    <p class="tagline">Extração inteligente de dados → CSV</p>
   </header>
 
-  <!-- TABS -->
-  <nav class="tabs">
-    <button class="tab active" data-tab="estoque">
-      <span class="tab-icon">▦</span> Estoque Geral
-    </button>
-    <button class="tab tab-transfer" data-tab="transferencias">
-      <span class="tab-icon">⇄</span> Transferências
-      <span class="tab-pill tab-pill-transfer" id="tab-pill-transfer">0</span>
-    </button>
-    <button class="tab" data-tab="comp1">
-      <span class="tab-icon">⊞</span> CD 1 × 3 × 7
-    </button>
-    <button class="tab" data-tab="comp2">
-      <span class="tab-icon">⊞</span> CD 1 × 6
-      <span class="tab-pill tab-pill-danger" style="margin-left:4px">ARM28</span>
-    </button>
-  </nav>
-
-  <!-- ========= TAB: ESTOQUE GERAL ========= -->
-  <div class="tab-panel active" id="tab-estoque">
-    <div class="filters-bar">
-      <div class="filter-group">
-        <label class="filter-label">CD</label>
-        <select class="filter-select" id="filter-cd">
-          <option value="">Todos</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Armazém Local</label>
-        <select class="filter-select" id="filter-armaz">
-          <option value="">Todos</option>
-        </select>
-      </div>
-      <div class="filter-group filter-group--wide">
-        <label class="filter-label">Produto</label>
-        <input type="text" class="filter-input" id="filter-produto" placeholder="Código ou descrição...">
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Situação</label>
-        <select class="filter-select" id="filter-saldo">
-          <option value="">Todos</option>
-          <option value="critico">Crítico (&lt;200)</option>
-          <option value="normal">Normal (≥200)</option>
-        </select>
-      </div>
-      <button class="filter-clear" id="clear-filters">✕ Limpar</button>
+  <!-- CARDS -->
+  <div class="cards">
+    <div class="card c-pr">
+      <div class="card-lbl">Paraná <span class="chip">CA 1</span></div>
+      <div class="card-val" id="cPR">0</div>
     </div>
-
-    <!-- Summary cards -->
-    <div class="summary-row" id="estoque-summary" style="display:none">
-      <div class="summary-card sc-total">
-        <span class="summary-card-label">Total Itens</span>
-        <span class="summary-card-num" id="sc-total">0</span>
-        <span class="summary-card-sub">registros</span>
-      </div>
-      <div class="summary-card sc-critical">
-        <span class="summary-card-label">Críticos</span>
-        <span class="summary-card-num" id="sc-critical">0</span>
-        <span class="summary-card-sub">saldo &lt; 200</span>
-      </div>
-      <div class="summary-card sc-ok">
-        <span class="summary-card-label">Normais</span>
-        <span class="summary-card-num" id="sc-ok">0</span>
-        <span class="summary-card-sub">saldo ≥ 200</span>
-      </div>
-      <div class="summary-card sc-transfer">
-        <span class="summary-card-label">Saldo Total</span>
-        <span class="summary-card-num" id="sc-saldo-total">0</span>
-        <span class="summary-card-sub">unidades em estoque</span>
-      </div>
+    <div class="card c-rj">
+      <div class="card-lbl">Rio de Janeiro <span class="chip">CA 28</span></div>
+      <div class="card-val" id="cRJ">0</div>
     </div>
-
-    <div class="table-wrapper">
-      <table class="data-table" id="table-estoque">
-        <thead>
-          <tr>
-            <th class="sortable" data-col="cd_material">Código <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="desc_material">Descrição <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="cd">CD <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="cd_centro_armaz">Arm. Local <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="desc_armaz">Desc. Armazém <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="saldo">Saldo <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="devolver">Devolver <span class="sort-icon"></span></th>
-            <th class="th-num">Situação</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-estoque"></tbody>
-      </table>
+    <div class="card c-tot">
+      <div class="card-lbl">Total Linhas</div>
+      <div class="card-val" id="cTOT">0</div>
     </div>
-    <div class="pagination" id="pagination-estoque"></div>
-  </div>
-
-  <!-- ========= TAB: TRANSFERÊNCIAS ========= -->
-  <div class="tab-panel" id="tab-transferencias">
-    <div class="transfer-header">
-      <span class="transfer-header-icon">⇄</span>
-      <div class="transfer-header-text">
-        <h3>PLANO DE TRANSFERÊNCIAS</h3>
-        <p>Materiais críticos em um CD com estoque disponível em outro — sugestão automática de origem → destino</p>
-      </div>
-      <div class="transfer-stats">
-        <div class="transfer-stat">
-          <div class="transfer-stat-num" id="ts-count">0</div>
-          <div class="transfer-stat-label">SUGESTÕES</div>
-        </div>
-        <div class="transfer-stat">
-          <div class="transfer-stat-num" id="ts-urgent">0</div>
-          <div class="transfer-stat-label">URGENTES</div>
-        </div>
-      </div>
-    </div>
-    <div class="filters-bar">
-      <div class="filter-group filter-group--wide">
-        <label class="filter-label">Buscar Material</label>
-        <input type="text" class="filter-input" id="filter-t-produto" placeholder="Código ou descrição...">
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">CD Destino (crítico)</label>
-        <select class="filter-select" id="filter-t-dest">
-          <option value="">Todos</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Prioridade</label>
-        <select class="filter-select" id="filter-t-priority">
-          <option value="">Todas</option>
-          <option value="URGENTE">Urgente</option>
-          <option value="ALTO">Alta</option>
-          <option value="NORMAL">Normal</option>
-        </select>
-      </div>
-      <button class="filter-clear" id="clear-t-filters">✕ Limpar</button>
-    </div>
-    <div class="table-wrapper">
-      <table class="data-table" id="table-transfer">
-        <thead>
-          <tr>
-            <th class="sortable" data-col="cd_material">Código <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="desc_material">Descrição <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="saldo_destino">Saldo Destino <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="cd_destino">CD Destino <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="armaz_destino">ARM Destino <span class="sort-icon"></span></th>
-            <th>Fluxo</th>
-            <th class="sortable" data-col="cd_origem">CD Origem <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="armaz_origem">ARM Origem <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="saldo_origem">Saldo Origem <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="qtd_sugerida">Qtd. Sugerida <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="prioridade">Prioridade <span class="sort-icon"></span></th>
-          </tr>
-        </thead>
-        <tbody id="tbody-transfer"></tbody>
-      </table>
-    </div>
-    <div class="pagination" id="pagination-transfer"></div>
-
-    <!-- SEÇÃO: ITENS SEM ESTOQUE / SEM TRANSFERÊNCIA POSSÍVEL -->
-    <div class="nostock-toggle-bar">
-      <div class="nostock-toggle-info">
-        <span class="nostock-icon">⊘</span>
-        <span>Itens <strong>sem estoque</strong> nos armazéns elegíveis (ARM 1, 21, 28) — transferência impossível</span>
-        <span class="nostock-badge" id="nostock-count">0</span>
-      </div>
-      <button class="nostock-toggle-btn" id="toggle-nostock">▼ Ver Itens Sem Estoque</button>
-    </div>
-
-    <div class="nostock-section" id="nostock-section" style="display:none">
-      <div class="table-wrapper" style="max-height:280px">
-        <table class="data-table" id="table-nostock">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Descrição</th>
-              <th>CD</th>
-              <th>Armazém</th>
-              <th class="th-num">Saldo</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-nostock"></tbody>
-        </table>
-      </div>
-      <div class="pagination" id="pagination-nostock"></div>
+    <div class="card c-err">
+      <div class="card-lbl">Não Reconhecidos</div>
+      <div class="card-val" id="cERR">0</div>
     </div>
   </div>
 
-  <!-- ========= TAB: COMP 1 — CD 1 × 3 × 7 ========= -->
-  <div class="tab-panel" id="tab-comp1">
-    <div class="filters-bar">
-      <div class="filter-group filter-group--wide">
-        <label class="filter-label">Buscar Material</label>
-        <input type="text" class="filter-input" id="filter-c1-produto" placeholder="Código ou descrição...">
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Situação</label>
-        <select class="filter-select" id="filter-c1-saldo">
-          <option value="">Todos</option>
-          <option value="critico">Algum crítico</option>
-          <option value="normal">Todos normais</option>
-        </select>
-      </div>
-      <button class="filter-clear" id="clear-c1-filters">✕ Limpar</button>
+  <!-- CONFIG -->
+  <div class="cfg">
+    <div class="cfg-g">
+      <label>Idioma OCR</label>
+      <select id="selLang">
+        <option value="por+eng">Português + Inglês</option>
+        <option value="por">Somente Português</option>
+        <option value="eng">Somente Inglês</option>
+        <option value="por+eng+spa">Port. + Inglês + Espanhol</option>
+      </select>
     </div>
-    <div class="table-wrapper">
-      <table class="data-table" id="table-comp1">
-        <thead>
-          <tr>
-            <th class="sortable" data-col="cd_material">Código <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="desc_material">Descrição <span class="sort-icon"></span></th>
-            <th class="sortable th-num th-cd1" data-col="v_cd1">CD 1 <span class="sort-icon"></span></th>
-            <th class="sortable th-num th-cd3" data-col="v_cd3">CD 3 <span class="sort-icon"></span></th>
-            <th class="sortable th-num th-cd7" data-col="v_cd7">CD 7 <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="total">Total <span class="sort-icon"></span></th>
-            <th class="th-transfer">Transferência Sugerida</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-comp1"></tbody>
-      </table>
+    <div class="cfg-g">
+      <label>Modo de Página</label>
+      <select id="selPsm">
+        <option value="6">Bloco uniforme (padrão)</option>
+        <option value="3">Automático</option>
+        <option value="4">Coluna única</option>
+        <option value="11">Texto esparso</option>
+      </select>
     </div>
-    <div class="pagination" id="pagination-comp1"></div>
+    <div class="cfg-g">
+      <label>Contraste</label>
+      <select id="selContrast">
+        <option value="1.4">Suave  (1.4×)</option>
+        <option value="1.7" selected>Normal (1.7×)</option>
+        <option value="2.2">Forte  (2.2×)</option>
+        <option value="3.0">Máximo (3.0×)</option>
+      </select>
+    </div>
+    <div class="cfg-g tog">
+      <input type="checkbox" id="chkPre" checked>
+      <label for="chkPre">Pré-processar imagem</label>
+      <small>cinza + contraste + sharpen</small>
+    </div>
+    <div class="cfg-g tog">
+      <input type="checkbox" id="chkInv" checked>
+      <label for="chkInv">Inverter cores</label>
+      <small>screenshots fundo escuro</small>
+    </div>
   </div>
 
-  <!-- ========= TAB: COMP 2 — CD 1 × 6 ARM 28 ========= -->
-  <div class="tab-panel" id="tab-comp2">
-    <div class="filters-bar">
-      <div class="comp-info">
-        <span class="comp-tag comp-tag-orange">ARM 28</span>
-        Apenas armazém local 28
-      </div>
-      <div class="filter-group filter-group--wide">
-        <label class="filter-label">Buscar Material</label>
-        <input type="text" class="filter-input" id="filter-c2-produto" placeholder="Código ou descrição...">
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Situação</label>
-        <select class="filter-select" id="filter-c2-saldo">
-          <option value="">Todos</option>
-          <option value="critico">Algum crítico</option>
-          <option value="normal">Todos normais</option>
-        </select>
-      </div>
-      <button class="filter-clear" id="clear-c2-filters">✕ Limpar</button>
+  <!-- UPLOAD -->
+  <input type="file" id="fInput" multiple accept="image/*" style="display:none">
+  <div id="dropZone">
+    <span class="dz-icon">📂</span>
+    <div class="dz-title">Carregar imagens</div>
+    <div class="dz-methods">
+      <div class="dz-method">🖱️ Clique para selecionar</div>
+      <div class="dz-method">📤 Arraste e solte aqui</div>
+      <div class="dz-method">⌨️ <kbd>Ctrl+V</kbd> para colar</div>
+      <div class="dz-method">📸 PrintScreen → <kbd>Ctrl+V</kbd></div>
     </div>
-    <div class="table-wrapper">
-      <table class="data-table" id="table-comp2">
-        <thead>
-          <tr>
-            <th class="sortable" data-col="cd_material">Código <span class="sort-icon"></span></th>
-            <th class="sortable" data-col="desc_material">Descrição <span class="sort-icon"></span></th>
-            <th class="sortable th-num th-cd1" data-col="v_cd1">CD 1 — ARM 28 <span class="sort-icon"></span></th>
-            <th class="sortable th-num th-cd6" data-col="v_cd6">CD 6 — ARM 28 <span class="sort-icon"></span></th>
-            <th class="sortable th-num" data-col="total">Total <span class="sort-icon"></span></th>
-            <th class="th-transfer">Transferência Sugerida</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-comp2"></tbody>
-      </table>
+    <div id="pasteMsg">✔ Imagem colada!</div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="prevWrap">
+    <div id="prevEmpty">Nenhuma imagem carregada</div>
+    <div id="prevLabel"></div>
+    <div id="prevNav">
+      <button id="btnPrev" disabled>‹</button>
+      <span id="navLbl">1 / 1</span>
+      <button id="btnNext" disabled>›</button>
     </div>
-    <div class="pagination" id="pagination-comp2"></div>
+    <div id="zoomHint">scroll = zoom · duplo clique = reset</div>
+  </div>
+
+  <!-- PROGRESSO -->
+  <div id="progArea">
+    <div id="progBar"><div id="progFill"></div></div>
+    <div id="progMsg">Aguardando...</div>
+  </div>
+
+  <!-- BOTÕES PRINCIPAIS -->
+  <div class="btn-row">
+    <button class="btn btn-yellow" id="btnConvert">🔍 Converter imagens</button>
+    <button class="btn btn-ghost"  id="btnClear">✕ Limpar tudo</button>
+  </div>
+
+  <!-- ERROS -->
+  <div id="errBox">
+    <div class="err-head">
+      <h3>Linhas não reconhecidas <span class="badge-r" id="errBadge">0</span></h3>
+      <button class="btn btn-ghost btn-sm" id="btnTogErr">▼ Ver</button>
+    </div>
+    <div id="errList"></div>
+  </div>
+
+  <!-- TABELA -->
+  <div id="tblWrap">
+    <div class="tbl-scroll" id="tblScroll"></div>
+  </div>
+
+  <!-- AÇÕES -->
+  <div class="actions" id="actBar" style="display:none">
+    <button class="btn btn-dark" id="btnDl">↓ Baixar CSV</button>
+    <button class="btn btn-dark" id="btnCopy">⧉ Copiar CSV</button>
+    <button class="btn btn-dark btn-muted" id="btnDlErr">↓ Baixar Erros TXT</button>
   </div>
 
 </div>
 
-<!-- Libs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- App modules -->
-<script src="wms.config.js"></script>
-<script src="wms.helpers.js"></script>
-<script src="wms.transfer.js"></script>
-<script src="wms.upload.js"></script>
-<script src="wms.estoque.js"></script>
-<script src="wms.transferencias.js"></script>
-<script src="wms.comp1.js"></script>
-<script src="wms.comp2.js"></script>
-<script src="wms.app.js"></script>
+<!-- Módulos em ordem de dependência -->
+<script src="js/corrections.js"></script>
+<script src="js/preprocess.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/preview.js"></script>
+<script src="js/table.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
